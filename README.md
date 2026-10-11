@@ -109,10 +109,10 @@ Glitch · Shockwave · Mandala Burst · Time Echo.**
 Anamorphic light-streaks, volumetric god-rays, halation bloom, and crossfade/wipe/iris/glitch/zoom
 **scene transitions** so autopilot plays like a directed show, not a channel-flip.
 
-### 🎚️ PRO AUDIO ENGINE
+### 🎚️ PRO AUDIO & PERFORMANCE ENGINE
 7-band pitch-mapped choreography · BPM + predictive grid-locked beat sync · spectral centroid/flux ·
 **time-domain waveform** (polar scope + the field rides the actual wave) · binaural/isochronic entrainment
-drone · **MIDI-learn** · scene snapshots.
+drone · **MIDI-learn** · **A/V master recording** (synced 60 FPS video + stereo audio bus) · **URL share links & JSON preset bank export/import** (drag-and-drop).
 
 ### ☉ 14 ENTHEOGENS, mapped to the math by phenomenology
 LSD · Psilocybin · DMT · Mescaline · Ayahuasca · 2C-B · Ketamine · Salvia · MDMA · Cannabis · Nitrous ·
@@ -147,6 +147,7 @@ space  cycle mode        A  autopilot          F  fullscreen        D  fire the 
 ↑ ↓    dose              K  ~10 Hz flicker     W  wallpaper lens    V  waveform scope
 T      trip arc          B  breath pacer       =  math HUD          R  reseed sims
 1–8    jump to mode      M  audio on           H  hide UI           𝒾  the science
+C      A/V recording     S  share link         [ ] prev/next mode   ⇧1–8 recall scene
 ```
 
 ---
