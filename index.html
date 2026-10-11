@@ -132,11 +132,22 @@
   #mathHUD b{color:#fff;letter-spacing:.1em} #mathHUD .eq{color:var(--accent2)}
   #mathHUD .aud{color:var(--accent)} #mathHUD .fps{color:var(--dim);opacity:.6}
   #mathHUD .hot{color:#62e6c9} #mathHUD .cold{color:var(--dim)}
+  #recHUD{position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:9;display:none;align-items:center;gap:8px;
+    font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:#fff;background:rgba(20,5,10,.85);
+    border:1px solid rgba(255,80,100,.55);box-shadow:0 0 18px rgba(255,50,80,.35);padding:6px 14px;border-radius:20px;
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:opacity .3s}
+  #recHUD.show{display:flex}
+  .rec-dot{width:8px;height:8px;border-radius:50%;background:#ff3355;box-shadow:0 0 10px #ff3355;animation:recPulse 1s ease-in-out infinite}
+  @keyframes recPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.75)}}
+  .rec-tag{font-size:9px;color:var(--accent2);padding:1px 5px;border-radius:4px;background:rgba(98,230,201,.15);border:1px solid rgba(98,230,201,.3)}
+
   .scenes{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
-  .scenepad{font-family:var(--mono);font-size:11px;padding:9px 0;border:1px solid var(--line);border-radius:8px;
-    text-align:center;color:var(--dim);cursor:pointer;background:rgba(255,255,255,.02);transition:.15s;user-select:none}
+  .scenepad{font-family:var(--mono);font-size:11px;padding:7px 2px;border:1px solid var(--line);border-radius:8px;
+    text-align:center;color:var(--dim);cursor:pointer;background:rgba(255,255,255,.02);transition:.15s;user-select:none;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:36px;gap:2px}
   .scenepad:hover{color:var(--ink);border-color:rgba(180,139,255,.5)}
   .scenepad.full{color:#fff;border-color:var(--accent);background:linear-gradient(135deg,rgba(180,139,255,.24),rgba(98,230,201,.12))}
+  .scenepad .sc-label{font-size:7.5px;letter-spacing:.02em;color:var(--accent2);text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
   .audsel{width:100%;margin-top:6px;font-family:var(--mono);font-size:9px;background:rgba(255,255,255,.04);color:var(--ink);
     border:1px solid var(--line);border-radius:8px;padding:6px 8px;cursor:pointer;outline:none}
   .audsel option{background:#12101e;color:var(--ink)}
@@ -191,6 +202,12 @@
 
 <div id="title">
   <h1 data-text="ENTHEA ∞">ENTHEA ∞</h1>
+</div>
+
+<div id="recHUD">
+  <span class="rec-dot"></span>
+  <span class="rec-time">00:00</span>
+  <span class="rec-tag" id="recTag">A/V</span>
 </div>
 
 <div id="phaseHUD">
@@ -320,6 +337,12 @@
   <div class="group">
     <div class="label">scenes · snapshots <span class="val" id="sceneHint">click=save/recall · ⇧=clear</span></div>
     <div class="scenes" id="scenes"></div>
+    <div class="pills" style="margin-top:6px;gap:5px">
+      <div class="pill" id="btnShare" style="flex:1;text-align:center" title="copy shareable link with current configuration">🔗 share</div>
+      <div class="pill" id="btnSceneExport" style="flex:1;text-align:center" title="export saved scenes to JSON file">⇪ export</div>
+      <div class="pill" id="btnSceneImport" style="flex:1;text-align:center" title="import presets from JSON file">⇩ import</div>
+    </div>
+    <input type="file" id="presetFileInput" accept=".json" style="display:none">
   </div>
   <div class="group">
     <div class="label">midi controller <span class="val" id="midiStat">off</span></div>
@@ -346,7 +369,7 @@
 <div id="mathHUD"></div>
 
 <div id="hint">
-  <b>space</b> cycle · <b>A</b> autopilot · <b>=</b> math · <b>T</b> trip · <b>K</b> flicker · <b>M</b> mic · <b>↑↓</b> dose · <b>F</b> full · <b>𝒾</b> science · <b>↑↑↓↓←→←→BA</b> 🜄
+  <b>space</b> cycle · <b>A</b> autopilot · <b>=</b> math · <b>T</b> trip · <b>K</b> flicker · <b>M</b> mic · <b>C</b> rec · <b>S</b> share · <b>↑↓</b> dose · <b>F</b> full · <b>𝒾</b> science · <b>↑↑↓↓←→←→BA</b> 🜄
 </div>
 
 <div id="breath"><div id="breathRing"><div id="breathTxt">breathe in</div></div></div>
@@ -2528,7 +2551,7 @@ addEventListener('mousemove',e=>{ pointer(e.clientX,e.clientY); showCursor(); })
 addEventListener('touchmove',e=>{ if(e.touches[0]) pointer(e.touches[0].clientX,e.touches[0].clientY); },{passive:true});
 
 addEventListener('keydown',e=>{
-  if(e.target.tagName==='INPUT') return;
+  if(e.target.tagName==='INPUT' || e.target.tagName==='SELECT' || e.target.tagName==='TEXTAREA') return;
   const k=e.key.toLowerCase();
   if(k===' '){ e.preventDefault(); if(S.trip) endTrip(); setMode((S.mode+1)%MODES.length); }
   else if(k==='h') togglePanel();
@@ -2544,11 +2567,22 @@ addEventListener('keydown',e=>{
   else if(k==='d') fireDrop(false);                                // D = manually trigger the wormhole drop
   else if(k==='w') cycleWall();                                    // W = cycle the wallpaper-group lens
   else if(k==='v') document.getElementById('tgScope').click();     // V = scope overlay (live waveform)
+  else if(k==='c') toggleRec();                                    // C = toggle master A/V recording
+  else if(k==='s') shareLink();                                    // S = copy share link
+  else if(k==='[') setMode((S.mode - 1 + MODES.length) % MODES.length);
+  else if(k===']') setMode((S.mode + 1) % MODES.length);
   else if(k==='i') showScience();
   else if(k==='escape') hideScience();
   else if(e.key==='ArrowUp'){ if(S.trip) endTrip(); setDose(S.dose+0.05); }
   else if(e.key==='ArrowDown'){ if(S.trip) endTrip(); setDose(S.dose-0.05); }
-  else if(k>='1'&&k<='8'){ const i=+k-1; if(i<MODES.length) setMode(i); }
+  else if(k>='1'&&k<='8'){
+    const idx=+k-1;
+    if(e.shiftKey){
+      if(scenes[idx]){ applyState(scenes[idx]); flashHint('▸ recalled scene '+(idx+1)); }
+    } else {
+      if(idx<MODES.length) setMode(idx);
+    }
+  }
 });
 
 let hintT;
@@ -2582,12 +2616,27 @@ function doBreath(){ const [txt,scale]=BREATH[breathStep];
 /* Mic → Web Audio FFT → spectral bands drive cortical gain, throb, colour.
    Grounded loosely in photic/acoustic driving & cross-modal entrainment; the
    precise audio→cortex mapping here is artistic. Audio is analysed locally only. */
-const AUDIO = { ctx:null, analyser:null, data:null, src:null, stream:null,
+const AUDIO = { ctx:null, analyser:null, data:null, src:null, stream:null, recDest:null, recLimiter:null,
   peak:{bass:0.05,mid:0.05,treble:0.05,level:0.05}, bassSlow:0, fluxSlow:0, lastBeatT:0, iois:[],
   spec:new Float32Array(SPEC_N), specPrev:new Float32Array(SPEC_N), specTex:new Uint8Array(SPEC_N), bars:null,
   hiSlow:0, hiFast:0, lvlSlow:0, primed:0, lastDrop:-99,
   wave:null, waveL:null, waveR:null, waveTex:new Uint8Array(WAVE_N*2).fill(128), wavePeak:0.1,
   splitter:null, anL:null, anR:null, silentSince:0, silentWarned:false };
+function initAudioRecBus(){
+  if(!AUDIO.ctx) return;
+  if(!AUDIO.recDest){
+    try{
+      AUDIO.recDest = AUDIO.ctx.createMediaStreamDestination();
+      AUDIO.recLimiter = AUDIO.ctx.createDynamicsCompressor();
+      AUDIO.recLimiter.threshold.value = -1.0;
+      AUDIO.recLimiter.knee.value = 6;
+      AUDIO.recLimiter.ratio.value = 12;
+      AUDIO.recLimiter.attack.value = 0.003;
+      AUDIO.recLimiter.release.value = 0.15;
+      AUDIO.recLimiter.connect(AUDIO.recDest);
+    }catch(e){ console.warn('Rec bus init:', e); }
+  }
+}
 const isFirefox = /firefox/i.test(navigator.userAgent);
 function approachTau(cur,tgt,tau,dt){ return cur + (tgt-cur)*(1.0-Math.exp(-dt/Math.max(tau,1e-3))); }
 function setAudioStatus(msg,cls){ const el=document.getElementById('audioStatus');
@@ -2620,6 +2669,8 @@ async function enableAudio(){
     AUDIO.analyser=AUDIO.ctx.createAnalyser(); AUDIO.analyser.fftSize=2048; AUDIO.analyser.smoothingTimeConstant=0.8;
     AUDIO.data=new Uint8Array(AUDIO.analyser.frequencyBinCount);
     node.connect(AUDIO.analyser);
+    initAudioRecBus();
+    if(AUDIO.recLimiter){ try{ node.connect(AUDIO.recLimiter); }catch(e){} }
     AUDIO.wave=new Float32Array(AUDIO.analyser.fftSize);
     try{                                                                      // stereo taps → true X/Y vectorscope
       AUDIO.splitter=AUDIO.ctx.createChannelSplitter(2); node.connect(AUDIO.splitter);
@@ -2673,6 +2724,8 @@ function startEntrain(){
   E.mix=ctx.createGain(); E.panL.connect(E.mix); E.panR.connect(E.mix); E.subg.connect(E.mix);
   E.lp=ctx.createBiquadFilter(); E.lp.type='lowpass'; E.lp.frequency.value=1100;
   E.mix.connect(E.lp); E.lp.connect(E.am); E.am.connect(E.master); E.master.connect(ctx.destination);
+  initAudioRecBus();
+  if(AUDIO.recLimiter){ try{ E.master.connect(AUDIO.recLimiter); }catch(e){} }
   E.oscL.start(); E.oscR.start(); E.sub.start();
   AUDIO.entrain=E; S.entrain=true;
 }
@@ -2976,15 +3029,94 @@ function uploadImage(file){ const img=new Image(); img.onload=()=>{
 document.getElementById('btnImage').onclick=()=>document.getElementById('imgFile').click();
 document.getElementById('imgFile').addEventListener('change',e=>{ if(e.target.files[0]) uploadImage(e.target.files[0]); });
 
-// RECORD canvas → .webm
-function toggleRec(){ const btn=document.getElementById('btnRec');
-  if(S.rec){ S.rec.stop(); return; }
-  try{ const rec=new MediaRecorder(canvas.captureStream(60),{mimeType:'video/webm'}); const chunks=[];
-    rec.ondataavailable=ev=>{ if(ev.data.size) chunks.push(ev.data); };
-    rec.onstop=()=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(chunks,{type:'video/webm'}));
-      a.download=`enthea_${performance.now()|0}.webm`; a.click(); S.rec=null; btn.classList.remove('on'); btn.textContent='◉ rec'; flashHint('▼ recording saved (.webm)'); };
-    rec.start(); S.rec=rec; btn.classList.add('on'); btn.textContent='■ stop'; flashHint('◉ recording your set…');
-  }catch(e){ flashHint('recording unsupported here'); } }
+// RECORD canvas + audio stream → .webm / .mp4
+function toggleRec(){
+  const btn=document.getElementById('btnRec');
+  const hud=document.getElementById('recHUD');
+  if(S.rec){
+    try{ S.rec.stop(); }catch(e){}
+    return;
+  }
+  try{
+    const vStream=canvas.captureStream(60);
+    const tracks=[...vStream.getVideoTracks()];
+    let hasAudio=false;
+    if(AUDIO.ctx && AUDIO.recDest && (S.audio.on || S.entrain)){
+      const aTracks=AUDIO.recDest.stream.getAudioTracks();
+      if(aTracks.length>0){
+        tracks.push(aTracks[0]);
+        hasAudio=true;
+      }
+    }
+    const combStream=new MediaStream(tracks);
+    const mimeTypes=[
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm;codecs=h264,opus',
+      'video/webm',
+      'video/mp4'
+    ];
+    let chosenMime='';
+    for(const m of mimeTypes){
+      if(typeof MediaRecorder.isTypeSupported==='function' && MediaRecorder.isTypeSupported(m)){
+        chosenMime=m;
+        break;
+      }
+    }
+    const recOptions=chosenMime ? { mimeType:chosenMime, videoBitsPerSecond:10000000, audioBitsPerSecond:256000 } : {};
+    const rec=new MediaRecorder(combStream, recOptions);
+    const chunks=[];
+    rec.ondataavailable=ev=>{ if(ev.data && ev.data.size>0) chunks.push(ev.data); };
+    
+    const startTime=performance.now();
+    S.recStartTime=startTime;
+    if(S.recTimer) clearInterval(S.recTimer);
+    if(hud){
+      hud.classList.add('show');
+      const tag=document.getElementById('recTag');
+      if(tag) tag.textContent=hasAudio ? 'A/V' : 'VID';
+      const timeEl=hud.querySelector('.rec-time');
+      if(timeEl) timeEl.textContent='00:00';
+    }
+    S.recTimer=setInterval(()=>{
+      if(!S.rec) return;
+      const elapsed=Math.floor((performance.now()-S.recStartTime)/1000);
+      const mm=String(Math.floor(elapsed/60)).padStart(2,'0');
+      const ss=String(elapsed%60).padStart(2,'0');
+      if(hud){
+        const timeEl=hud.querySelector('.rec-time');
+        if(timeEl) timeEl.textContent=`${mm}:${ss}`;
+      }
+      if(btn) btn.textContent=`■ ${mm}:${ss}`;
+    }, 500);
+
+    rec.onstop=()=>{
+      if(S.recTimer){ clearInterval(S.recTimer); S.recTimer=null; }
+      if(hud) hud.classList.remove('show');
+      const ext=(chosenMime && chosenMime.includes('mp4')) ? 'mp4' : 'webm';
+      const blob=new Blob(chunks, { type:chosenMime || 'video/webm' });
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      const d=new Date();
+      const stamp=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}${String(d.getSeconds()).padStart(2,'0')}`;
+      a.download=`enthea_${MODES[S.mode].id}_${stamp}.${ext}`;
+      a.click();
+      S.rec=null;
+      btn.classList.remove('on');
+      btn.textContent='◉ rec';
+      flashHint(`▼ saved master recording (${hasAudio ? 'video + stereo audio' : 'video'})`);
+    };
+
+    rec.start(1000);
+    S.rec=rec;
+    btn.classList.add('on');
+    btn.textContent='■ 00:00';
+    flashHint(`◉ recording master set (${hasAudio ? 'video + stereo audio' : 'video'})…`);
+  }catch(e){
+    console.error('Recording error:', e);
+    flashHint('recording unsupported here');
+  }
+}
 document.getElementById('btnRec').onclick=toggleRec;
 
 /* ============================== PRO: MATH HUD · SCENES · MIDI ============================== */
@@ -3035,29 +3167,235 @@ function updateMathHUD(){
 bindToggle('tgMath','math',v=>{ document.getElementById('mathHUD').classList.toggle('on',v); if(v) updateMathHUD();
   flashHint(v?'∑ math HUD on — the equations, live':'math HUD off'); });
 
-/* scene snapshots (persist to localStorage) */
+/* scene snapshots (persist to localStorage) & preset management */
 const SC_KEY='enthea_scenes'; let scenes; try{ scenes=JSON.parse(localStorage.getItem(SC_KEY)||'[]'); }catch(e){ scenes=[]; } scenes.length=8;
 function saveScenes(){ try{ localStorage.setItem(SC_KEY, JSON.stringify(scenes)); }catch(e){} }
-function snapState(){ return {mode:S.mode,palette:S.palette,planform:S.planform,dose:S.dose,speed:S.speed,cplx:S.cplx,sym:S.sym,trail:S.trail,asc:S.asc,chaos:S.chaos,tone:S.tone,fhz:S.fhz,flicker:S.flicker,ray:S.ray,choreo:S.choreo,wall:S.wall,wallScale:S.wallScale,scope:S.scope,cine:S.cine,trans:S.trans,dropFxSel:S.dropFxSel,fx:{...S.fx},substance:S.substance}; }
-function applyState(s){ setMode(s.mode,true); setPalette(s.palette);
-  S.planform=s.planform; document.querySelectorAll('#planforms .pill').forEach((e,idx)=>e.classList.toggle('active',idx===s.planform));
-  setSliderVal('speed','speedV',s.speed,2); setSliderVal('cplx','cplxV',s.cplx,2); setSliderVal('sym','symV',s.sym,0);
-  setSliderVal('trail','trailV',s.trail,2); setSliderVal('tone','toneV',s.tone,2); setSliderVal('fhz','fhzV',s.fhz,0);
-  setSliderVal('chaos','chaosV',s.chaos,2); setDose(s.dose); setAsc(s.asc); S.fx={...s.fx}; S.substance=s.substance;
-  setWall(s.wall||0); setSliderVal('wallScale','wallScaleV',s.wallScale||3,1);
-  S.scope=!!s.scope; document.getElementById('tgScope').classList.toggle('on',S.scope);
-  setDropFx(s.dropFxSel||0, true);
-  S.cine=s.cine!==false; document.getElementById('tgCine').classList.toggle('on',S.cine);
-  S.trans=s.trans!==false; document.getElementById('tgTrans').classList.toggle('on',S.trans);
-  S.flicker=s.flicker; document.getElementById('tgFlicker').classList.toggle('on',s.flicker);
-  S.ray=s.ray; document.getElementById('tgRay').classList.toggle('on',s.ray);
-  S.choreo=s.choreo; document.getElementById('tgChoreo').classList.toggle('on',s.choreo); }
-function buildScenesUI(){ const c=document.getElementById('scenes'); c.innerHTML='';
-  for(let i=0;i<8;i++){ const b=document.createElement('div'); b.className='scenepad'+(scenes[i]?' full':''); b.textContent=i+1;
-    b.onclick=(e)=>{ if(e.shiftKey){ scenes[i]=null; saveScenes(); b.classList.remove('full'); flashHint('scene '+(i+1)+' cleared'); return; }
-      if(scenes[i]){ applyState(scenes[i]); flashHint('▸ recalled scene '+(i+1)); }
-      else { scenes[i]=snapState(); saveScenes(); b.classList.add('full'); flashHint('● saved scene '+(i+1)); } };
-    c.appendChild(b); } }
+function snapState(){
+  return {
+    mode:S.mode, palette:S.palette, planform:S.planform, dose:S.dose, speed:S.speed, cplx:S.cplx, sym:S.sym, trail:S.trail,
+    asc:S.asc, chaos:S.chaos, tone:S.tone, fhz:S.fhz, flicker:S.flicker, ray:S.ray, choreo:S.choreo, wall:S.wall, wallScale:S.wallScale,
+    scope:S.scope, cine:S.cine, trans:S.trans, dropFxSel:S.dropFxSel, fx:{...S.fx}, substance:S.substance,
+    audReact:S.audio.react, audSens:S.audio.sens
+  };
+}
+function applyState(s){
+  if(!s) return;
+  setMode(s.mode, true);
+  setPalette(s.palette);
+  S.planform = s.planform || 0;
+  document.querySelectorAll('#planforms .pill').forEach((e,idx)=>e.classList.toggle('active', idx===S.planform));
+  setSliderVal('speed','speedV', s.speed!==undefined ? s.speed : 1.0, 2);
+  setSliderVal('cplx','cplxV', s.cplx!==undefined ? s.cplx : 0.55, 2);
+  setSliderVal('sym','symV', s.sym!==undefined ? s.sym : 6, 0);
+  setSliderVal('trail','trailV', s.trail!==undefined ? s.trail : 0.35, 2);
+  setSliderVal('tone','toneV', s.tone!==undefined ? s.tone : 0.35, 2);
+  setSliderVal('fhz','fhzV', s.fhz!==undefined ? s.fhz : 10.0, 0);
+  setSliderVal('chaos','chaosV', s.chaos!==undefined ? s.chaos : 0.3, 2);
+  setDose(s.dose!==undefined ? s.dose : 0.45);
+  setAsc(s.asc!==undefined ? s.asc : 0.0);
+  if(s.fx) S.fx = {...DEFAULT_FX, ...s.fx};
+  if(s.substance){
+    const prof = SUBSTANCES.find(x => x.id === s.substance);
+    if(prof){
+      S.substance = prof.id;
+      document.querySelectorAll('.sub').forEach(e => e.classList.toggle('active', e.dataset.id === prof.id));
+      document.getElementById('subDesc').innerHTML = `<b>${prof.name}</b> · ${prof.klass} · ~${prof.duration}`;
+    }
+  } else {
+    S.substance = null;
+    document.querySelectorAll('.sub').forEach(e => e.classList.remove('active'));
+  }
+  setWall(s.wall || 0);
+  setSliderVal('wallScale','wallScaleV', s.wallScale || 3.0, 1);
+  if(s.scope !== undefined){ S.scope = !!s.scope; document.getElementById('tgScope').classList.toggle('on', S.scope); }
+  if(s.cine !== undefined){ S.cine = !!s.cine; document.getElementById('tgCine').classList.toggle('on', S.cine); }
+  if(s.trans !== undefined){ S.trans = !!s.trans; document.getElementById('tgTrans').classList.toggle('on', S.trans); }
+  if(s.flicker !== undefined){ S.flicker = !!s.flicker; document.getElementById('tgFlicker').classList.toggle('on', S.flicker); }
+  if(s.ray !== undefined){ S.ray = !!s.ray; document.getElementById('tgRay').classList.toggle('on', S.ray); }
+  if(s.choreo !== undefined){ S.choreo = !!s.choreo; document.getElementById('tgChoreo').classList.toggle('on', S.choreo); }
+  if(s.dropFxSel !== undefined) setDropFx(s.dropFxSel, true);
+  if(s.audReact !== undefined) setSliderVal('areact','audReact', s.audReact, 2);
+  if(s.audSens !== undefined) setSliderVal('asens','audSens', s.audSens, 2);
+  startTransition();
+}
+
+function buildScenesUI(){
+  const c = document.getElementById('scenes');
+  if(!c) return;
+  c.innerHTML = '';
+  for(let i=0; i<8; i++){
+    const sc = scenes[i];
+    const b = document.createElement('div');
+    b.className = 'scenepad' + (sc ? ' full' : '');
+    const modeName = sc && MODES[sc.mode] ? MODES[sc.mode].name.split(' ')[0] : '';
+    b.innerHTML = `<span>${i+1}</span>${sc ? `<span class="sc-label">${modeName}</span>` : ''}`;
+    b.title = sc ? `Scene ${i+1}: ${MODES[sc.mode]?.name || 'Mode ' + sc.mode} (click to recall · shift+click to clear)` : `Empty slot ${i+1} (click to save current state)`;
+    b.onclick = (e) => {
+      if(e.shiftKey){
+        scenes[i] = null;
+        saveScenes();
+        buildScenesUI();
+        flashHint('scene ' + (i+1) + ' cleared');
+        return;
+      }
+      if(scenes[i]){
+        applyState(scenes[i]);
+        flashHint('▸ recalled scene ' + (i+1));
+      } else {
+        scenes[i] = snapState();
+        saveScenes();
+        buildScenesUI();
+        flashHint('● saved scene ' + (i+1));
+      }
+    };
+    c.appendChild(b);
+  }
+}
+
+/* URL hash state serialization & sharing */
+function serializeToHash(){
+  const p = [
+    `m=${S.mode}`,
+    `p=${S.palette}`,
+    `pf=${S.planform}`,
+    `d=${_f(S.dose,2)}`,
+    `sp=${_f(S.speed,2)}`,
+    `c=${_f(S.cplx,2)}`,
+    `s=${S.sym}`,
+    `tr=${_f(S.trail,2)}`,
+    `w=${S.wall}`,
+    `ws=${_f(S.wallScale,1)}`,
+    `tone=${_f(S.tone,2)}`,
+    `asc=${_f(S.asc,2)}`,
+    `chaos=${_f(S.chaos,2)}`,
+    `fhz=${_f(S.fhz,1)}`
+  ];
+  if(S.substance) p.push(`sub=${S.substance}`);
+  if(S.flicker) p.push('fl=1');
+  if(S.scope) p.push('scope=1');
+  if(!S.cine) p.push('cine=0');
+  if(!S.ray) p.push('ray=0');
+  return '#' + p.join('&');
+}
+
+function parseHashState(hashStr){
+  if(!hashStr) return null;
+  const raw = hashStr.replace(/^#\/?/, '');
+  if(!raw) return null;
+  const params = new URLSearchParams(raw);
+  const s = {};
+  if(params.has('m')){
+    const m = params.get('m');
+    const mi = isNaN(+m) ? MODES.findIndex(x => x.id === m) : +m;
+    if(mi >= 0 && mi < MODES.length) s.mode = mi;
+  }
+  if(params.has('p')) s.palette = Math.max(0, Math.min(PALETTES.length - 1, +params.get('p')));
+  if(params.has('pf')) s.planform = Math.max(0, Math.min(PLANFORMS.length - 1, +params.get('pf')));
+  if(params.has('d') || params.has('dose')) s.dose = clamp01(+(params.get('d') || params.get('dose')));
+  if(params.has('sp') || params.has('speed')) s.speed = Math.max(0, Math.min(3, +(params.get('sp') || params.get('speed'))));
+  if(params.has('c') || params.has('cplx')) s.cplx = clamp01(+(params.get('c') || params.get('cplx')));
+  if(params.has('s') || params.has('sym')) s.sym = Math.max(2, Math.min(16, +(params.get('s') || params.get('sym'))));
+  if(params.has('tr') || params.has('trail')) s.trail = Math.max(0, Math.min(0.97, +(params.get('tr') || params.get('trail'))));
+  if(params.has('w') || params.has('wall')) s.wall = Math.max(0, Math.min(WALLPAPERS.length - 1, +(params.get('w') || params.get('wall'))));
+  if(params.has('ws')) s.wallScale = Math.max(1, Math.min(9, +params.get('ws')));
+  if(params.has('tone')) s.tone = clamp01(+params.get('tone'));
+  if(params.has('asc')) s.asc = clamp01(+params.get('asc'));
+  if(params.has('chaos')) s.chaos = clamp01(+params.get('chaos'));
+  if(params.has('fhz')) s.fhz = Math.max(4, Math.min(24, +params.get('fhz')));
+  if(params.has('fl')) s.flicker = params.get('fl') === '1' || params.get('fl') === 'true';
+  if(params.has('scope')) s.scope = params.get('scope') === '1' || params.get('scope') === 'true';
+  if(params.has('cine')) s.cine = params.get('cine') === '1' || params.get('cine') === 'true';
+  if(params.has('ray')) s.ray = params.get('ray') === '1' || params.get('ray') === 'true';
+  if(params.has('sub')) s.substance = params.get('sub');
+  return Object.keys(s).length > 0 ? s : null;
+}
+
+function loadStateFromHash(){
+  const parsed = parseHashState(window.location.hash);
+  if(parsed){
+    applyState(parsed);
+    flashHint('✦ loaded configuration from link');
+  }
+}
+
+function shareLink(){
+  const hash = serializeToHash();
+  const base = window.location.href.split('#')[0];
+  const fullUrl = base + hash;
+  try { window.history.replaceState(null, '', hash); } catch(e){}
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(fullUrl).then(()=>{
+      flashHint('✦ share link copied to clipboard!');
+    }).catch(()=>{ fallbackCopy(fullUrl); });
+  } else {
+    fallbackCopy(fullUrl);
+  }
+}
+
+function fallbackCopy(text){
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand('copy');
+    flashHint('✦ share link copied to clipboard!');
+  } catch(e) {
+    flashHint('✦ link generated in address bar');
+  }
+  document.body.removeChild(ta);
+}
+
+function exportPresetsJSON(){
+  const data = {
+    app: 'ENTHEA',
+    version: '1.0',
+    timestamp: new Date().toISOString(),
+    current: snapState(),
+    scenes: scenes.map((sc, idx) => sc ? { ...sc, slot: idx + 1 } : null)
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `enthea_presets_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  flashHint('⇪ exported presets (.json)');
+}
+
+function importPresetsJSON(fileOrText){
+  try {
+    const parseAndApply = (jsonText) => {
+      const data = JSON.parse(jsonText);
+      if(!data) throw new Error('Invalid JSON');
+      let count = 0;
+      if(Array.isArray(data.scenes)){
+        data.scenes.forEach((sc, idx) => {
+          if(sc && idx < 8){ scenes[idx] = sc; count++; }
+        });
+        saveScenes();
+        buildScenesUI();
+      }
+      if(data.current) {
+        applyState(data.current);
+      } else if(data.mode !== undefined) {
+        applyState(data);
+      }
+      flashHint(`✓ loaded presets (${count} scene${count===1?'':'s'} restored)`);
+    };
+    if(typeof fileOrText === 'string'){
+      parseAndApply(fileOrText);
+    } else if(fileOrText instanceof File || fileOrText instanceof Blob){
+      const reader = new FileReader();
+      reader.onload = e => parseAndApply(e.target.result);
+      reader.readAsText(fileOrText);
+    }
+  } catch(e) {
+    console.error('Import error:', e);
+    flashHint('⚠ could not parse preset file');
+  }
+}
 
 /* MIDI-learn (Web MIDI — Chrome; graceful elsewhere) */
 const MIDI={access:null, armed:null}; let MIDIMAP; try{ MIDIMAP=JSON.parse(localStorage.getItem('enthea_midi')||'{}'); }catch(e){ MIDIMAP={}; }
@@ -3079,9 +3417,36 @@ bindToggle('tgMidiLearn','midiLearn',v=>{ if(!v){ MIDI.armed=null; document.quer
 document.querySelectorAll('#panel input[type=range]').forEach(el=>{ el.addEventListener('mousedown',()=>{ if(S.midiLearn){ MIDI.armed=el.id;
   document.querySelectorAll('#panel input[type=range]').forEach(e=>e.style.outline=''); el.style.outline='2px solid var(--accent2)'; flashHint('◎ now twist a CC for '+el.id); } }); });
 
+document.getElementById('btnShare').onclick=shareLink;
+document.getElementById('btnSceneExport').onclick=exportPresetsJSON;
+document.getElementById('btnSceneImport').onclick=()=>document.getElementById('presetFileInput').click();
+document.getElementById('presetFileInput').onchange=(e)=>{
+  if(e.target.files && e.target.files[0]){
+    importPresetsJSON(e.target.files[0]);
+    e.target.value='';
+  }
+};
+
+window.addEventListener('dragover', e=>e.preventDefault());
+window.addEventListener('drop', e=>{
+  e.preventDefault();
+  if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]){
+    const file=e.dataTransfer.files[0];
+    if(file.name.endsWith('.json') || file.type==='application/json'){
+      importPresetsJSON(file);
+    } else if(file.type.startsWith('audio/')){
+      loadAudioFile(file);
+    } else if(file.type.startsWith('image/')){
+      uploadImage(file);
+    }
+  }
+});
+window.addEventListener('hashchange', loadStateFromHash);
+
 buildUI(); buildSubstanceUI(); buildAudioMeter(); buildFlipsUI(); buildScenesUI();
 ['tgChoreo','tgJourney','tgRay','tgDrop','tgCine','tgTrans'].forEach(idd=>{ const e=document.getElementById(idd); if(e) e.classList.add('on'); }); // default-on: choreography · autopilot · 3D · drop-detect · cinematic · transitions
 refreshDevices();
+loadStateFromHash();
 requestAnimationFrame(frame);
 console.log('%cENTHEA','color:#b48bff;font-size:20px;font-weight:bold','— neural-field engine online. mathematics of hallucination running.');
 </script>
